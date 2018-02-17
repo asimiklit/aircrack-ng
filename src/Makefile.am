@@ -100,6 +100,23 @@ SRC_BS		+= sha1-git.c
 SRC_AV		+= sha1-git.c
 endif
 
+SRC_AC_ALL		+= sha1_64_20.c
+SRC_AC		+= sha1_64_20.c
+SRC_ACLIB		+= sha1_64_20.c
+SRC_AD		+= sha1_64_20.c
+SRC_PF		+= sha1_64_20.c
+SRC_IV		+= sha1_64_20.c
+SRC_AR		+= sha1_64_20.c
+SRC_ADU		+= sha1_64_20.c
+SRC_AT		+= sha1_64_20.c
+SRC_AB		+= sha1_64_20.c
+SRC_AL		+= sha1_64_20.c
+SRC_WS		+= sha1_64_20.c
+SRC_TT		+= sha1_64_20.c
+SRC_BS		+= sha1_64_20.c
+SRC_AV		+= sha1_64_20.c
+
+
 LIBOSD		= osdep/libosdep.la
 LIBOSD_LIBS	= -Losdep -losdep
 if CYGWIN
@@ -320,6 +337,7 @@ EXTRA_DIST = wpaclean.c \
              aircrack-ptw-lib.h \
              simd-intrinsics.h \
              sha1-git.h \
+             sha1_64_20.h \
              makeivs-ng.c \
              easside-ng.c \
              sse-intrinsics-load-flags.h \
@@ -356,6 +374,7 @@ EXTRA_DIST = wpaclean.c \
              aligned.h \
              johnswap.h \
              sha1-git.c \
+             sha1_64_20.c \
              linecount.h \
              memdbg.h \
              sse-intrinsics.c \

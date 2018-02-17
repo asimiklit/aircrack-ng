@@ -222,6 +222,7 @@ struct options
 
 	char * wkp;					 /* EWSA Project file */
 	char * hccap;				         /* Hashcat capture file */
+   int sha1_6420;
 
 }
 

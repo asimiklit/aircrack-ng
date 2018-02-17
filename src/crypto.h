@@ -208,7 +208,8 @@ struct rc4_state
 
 struct AP_info;
 
-void calc_pmk( char *key, char *essid, unsigned char pmk[40] );
+void calc_pmk(char *key, char *essid, unsigned char pmk[40]);
+void calc_pmk_sha6420(char *key, char *essid, unsigned char pmk[40]);
 int decrypt_wep( unsigned char *data, int len, unsigned char *key, int keylen );
 int encrypt_wep( unsigned char *data, int len, unsigned char *key, int keylen );
 int check_crc_buf( unsigned char *buf, int len );
