@@ -1,6 +1,6 @@
 #ifndef _SHA1_64_20_GIT
 /*
-* sha1-git.c
+* sha1_64_20.c
 *
 * This code is based on the GIT SHA1 Implementation.
 *
@@ -38,6 +38,9 @@
 
 /* this is only to get definitions for memcpy(), ntohl() and htonl() */
 //#include "../git-compat-util.h"
+#ifdef WIN32
+#include <Winsock2.h> // for htonl
+#endif
 #include <string.h>
 #include "sha1_64_20.h"
 #if defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
@@ -104,22 +107,13 @@
     defined(__powerpc__) || defined(__powerpc64__) || \
     defined(__s390__) || defined(__s390x__)
 
-#define get_be32(p)	ntohl(*(unsigned int *)(p))
-#define put_be32(p, v)	do { *(unsigned int *)(p) = htonl(v); } while (0)
+#define get_be32(p)	(*(unsigned int *)(p))
+#define put_be32(p, v)	do { *(unsigned int *)(p) = (v); } while (0)
 
 #else
 
-#define get_be32(p)	( \
-	(*((unsigned char *)(p) + 0) << 24) | \
-	(*((unsigned char *)(p) + 1) << 16) | \
-	(*((unsigned char *)(p) + 2) <<  8) | \
-	(*((unsigned char *)(p) + 3) <<  0) )
-#define put_be32(p, v)	do { \
-	unsigned int __v = (v); \
-	*((unsigned char *)(p) + 0) = __v >> 24; \
-	*((unsigned char *)(p) + 1) = __v >> 16; \
-	*((unsigned char *)(p) + 2) = __v >>  8; \
-	*((unsigned char *)(p) + 3) = __v >>  0; } while (0)
+#define get_be32(p) (*(unsigned int *)(p))
+#define put_be32(p, v) do { *(unsigned int *)(p) = (v); } while (0)
 
 #endif
 
@@ -279,12 +273,12 @@ void SHA1_Final_20(unsigned char ohash[20], SHA_CTX6420 *ctx, const void * data2
    v.buffer32u[2] = ((uint32_type*)data20byte)[2];
    v.buffer32u[3] = ((uint32_type*)data20byte)[3];
    v.buffer32u[4] = ((uint32_type*)data20byte)[4];
-   v.buffer32u[5] = 0x80U;
+   v.buffer32u[5] = 0x80000000u;
    for (i = 6; i < 15; ++i)
    {
       v.buffer32u[i] = 0x0U;
    }
-   v.buffer32u[15] = 0xA0020000U;
+   v.buffer32u[15] = 0x000002A0u;
    blk_SHA1_Block(ctx, v.buffer32u);
 
    /* Output hash */
