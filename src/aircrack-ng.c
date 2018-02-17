@@ -4125,18 +4125,18 @@ int crack_wpa_thread( void *arg )
 #else
 			calc_4pmk(key[0], key[1], key[2], key[3], essid, pmk[0], pmk[1], pmk[2], pmk[3]);
 #endif
-      }
-      else if (opt.sha1_6420)
-      {
-         for (j = 0; j < cpuinfo.simdsize; ++j)
-            calc_pmk_sha6420(key[j], essid, pmk[j]);
-      }
-      else
-      {
-         for (j = 0; j < cpuinfo.simdsize; ++j)
-            calc_pmk(key[j], essid, pmk[j]);
-      }
-      
+		}
+		else if (opt.sha1_6420)
+		{
+			for (j = 0; j < cpuinfo.simdsize; ++j)
+				calc_pmk_sha6420(key[j], essid, pmk[j]);
+		}
+		else
+		{
+			for (j = 0; j < cpuinfo.simdsize; ++j)
+				calc_pmk(key[j], essid, pmk[j]);
+		}
+
 		for(j=0; j < cpuinfo.simdsize; ++j)
 		{
 			/* compute the pairwise transient key and the frame MIC */
@@ -5174,7 +5174,7 @@ int main( int argc, char *argv[] )
 	opt.wkp = NULL;
 	opt.hccap = NULL;
 	opt.forced_amode	= 0;
-   opt.sha1_6420 = 0;
+	opt.sha1_6420 = 0;
 	/*
 	all_ivs = malloc( (256*256*256) * sizeof(used_iv));
 	memset(all_ivs, 0, (256*256*256)*sizeof(used_iv));
@@ -5594,11 +5594,11 @@ int main( int argc, char *argv[] )
 				forceptw = 1;
 
 				break;
-         case 'o':
-            
-            opt.sha1_6420 = 1;
+			case 'o':
 
-            break;
+				opt.sha1_6420 = 1;
+
+				break;
 			default : goto usage;
 		}
 	}
