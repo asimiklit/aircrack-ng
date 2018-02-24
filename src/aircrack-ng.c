@@ -4015,11 +4015,19 @@ __out:
 	pthread_mutex_unlock(&mx_wpastats);
 }
 
+void clear_last_word32u_before_htonl(char * buf, unsigned int datasize)
+{
+   unsigned int word = (datasize - 1U) >> 2U, left = datasize & 0x3U;
+   if (left) 
+   { 
+      ((unsigned int*)buf)[word] = (0xffffffffU >> ((4 - left) << 3)) & ((unsigned int*)buf)[word]; 
+   }
+}
 
 int crack_wpa_thread( void *arg )
 {
 	FILE * keyFile;
-	char  essid[36];
+	char  essid[40];
 	char  key[8][128];
 	unsigned char pmk[8][128];
 
@@ -4048,6 +4056,7 @@ int crack_wpa_thread( void *arg )
 	ap = data->ap;
 	threadid = data->threadid;
 	strncpy(essid, ap->essid, 36);
+	clear_last_word32u_before_htonl(essid, strlen(essid));
 
 #ifndef OLD_SSE_CORE
 	init_ssecore(threadid);
@@ -4089,7 +4098,7 @@ int crack_wpa_thread( void *arg )
 		for(j=0; j < cpuinfo.simdsize; ++j)
 		{
 			key[j][0]=0;
-
+			
 			while(wpa_receive_passphrase(key[j], data)==0)
 			{
 				if (wpa_wordlists_done==1) // if no more words will arrive and...
@@ -4129,7 +4138,10 @@ int crack_wpa_thread( void *arg )
 		else if (opt.sha1_6420)
 		{
 			for (j = 0; j < cpuinfo.simdsize; ++j)
+			{
+				clear_last_word32u_before_htonl(key[j], strlen(key[j]));
 				calc_pmk_sha6420(key[j], essid, pmk[j]);
+			}
 		}
 		else
 		{
@@ -4170,7 +4182,13 @@ int crack_wpa_thread( void *arg )
 					pthread_cond_signal(&wpa_data[i].cond);
 					pthread_mutex_unlock(&wpa_data[i].mutex);
 				}
-
+				if (opt.sha1_6420)
+				{
+					for (i = 0; i < 16; ++i)
+					{
+						((unsigned int*)key[j])[i] = htonl(((unsigned int*)key[j])[i]);
+					}
+				}
 				memcpy(data->key, key[j], sizeof(data->key));
 
 				// Write the key to a file

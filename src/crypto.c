@@ -247,88 +247,79 @@ void calc_pmk( char *key, char *essid_pre, unsigned char pmk[40] )
 * 
 ****/
 
-void calc_pmk_sha6420(char *key, char *essid_pre, unsigned char pmk[40])
+void calc_pmk_sha6420(char *key, char *essid_str, unsigned char pmk[40])
 {
-	int i, j, slen, klen, klen_words;
-	union {
-		unsigned char buffer[65];
-		unsigned int buffer4u[16];//64byte
-		unsigned long long int buffer8u[8];//64byte
-	} v;
-	char essid[33 + 4];
-	SHA_CTX6420 ctx_ipad;
-	SHA_CTX6420 ctx_opad;
-	SHA_CTX6420 sha1_ctx;
+	unsigned int i, j, slen, klen;
+   union
+   {
+      unsigned char u8[64];
+      unsigned int u32[16];
+   } buffer;
+   union
+   {
+      char u8[40];
+      unsigned int u32[10];
+   } essid;
+   SHA_CTX6420 ctx_ipad;
+   SHA_CTX6420 ctx_opad;
+   SHA_CTX6420 sha1_ctx;
+   memset(essid.u8, 0, sizeof(essid.u8));
+   memcpy(essid.u8, essid_str, strlen(essid_str));
+   klen = (unsigned int)strlen(key);
+   slen = (unsigned int)strlen(essid.u8) + 4;
+   essid.u8[slen - 1] = '\1';
 
-	slen = strlen(essid_pre);
-	memset(essid + slen, 0, sizeof(essid) - slen);
-	memcpy(essid, essid_pre, slen);
-	slen = slen + 4;
-	klen = strlen(key);
-	klen_words = (klen >> 2) + 1;
-	/* setup the inner and outer contexts */
+   /* setup the inner and outer contexts */
 
-	for (i = 0; i < 8; ++i)
-		v.buffer8u[i] = 0x3636363636363636ull;
-	
-	for (i = 0; i < klen; ++i)
-		v.buffer[i] ^= ((unsigned char*)key)[i];
-	//reverse the data words here to avoid to do this each time in SHA1
-	for (i = 0; i < klen_words; ++i)
-		v.buffer4u[i] = htonl(v.buffer4u[i]);
+   j = (klen >> 2);
+   for (i = 0; i < j; ++i)
+   {
+      ((unsigned int*)key)[i] = htonl(((unsigned int*)key)[i]);
+   }
+   j = (klen & 0x3);
+   if (j){ ((unsigned int*)key)[i] = htonl(((unsigned int*)key)[i]); }
+   j = (slen >> 2);
+   for (i = 0; i < j; ++i)
+   {
+      essid.u32[i] = htonl(essid.u32[i]);
+   }
+   j = (slen & 0x3);
+   if (j){ essid.u32[i] = htonl(essid.u32[i]); }
 
-	SHA1_Init_64(&ctx_ipad, v.buffer);
+   HMAC_SHA1_6420v2(key, klen, essid.u8, slen, pmk, &ctx_ipad, &ctx_opad);
 
-	for (i = 0; i < 8; ++i)
-		v.buffer8u[i] ^= 0x6A6A6A6A6A6A6A6Aull;
+   /* iterate HMAC-SHA1 over itself 8192 times */
+   memcpy(buffer.u8, pmk, 20);
 
-	SHA1_Init_64(&ctx_opad, v.buffer);
+   for (i = 1; i < 4096; ++i)
+   {
+      SHA1_Final_20(buffer.u8, &ctx_ipad, buffer.u8);
+      SHA1_Final_20(buffer.u8, &ctx_opad, buffer.u8);
 
-	/* iterate HMAC-SHA1 over itself 8192 times */
+      for (j = 0; j < 5; ++j)
+         ((unsigned int*)pmk)[j] ^= buffer.u32[j];
+   }
 
-	essid[slen - 1] = '\1';
-	HMAC(EVP_sha1(), (unsigned char *)key, klen, (unsigned char*)essid, slen, pmk, NULL);
-	
-	//reverse the data words here to avoid to do this each time in SHA1
-	for (i = 0; i < 5; ++i)
-		v.buffer4u[i] = ((unsigned int*)pmk)[i] = htonl(((unsigned int*)pmk)[i]);
-	
-	for (i = 1; i < 4096; i++)
-	{
-		SHA1_Assign_6420(&sha1_ctx, &ctx_ipad);
-		SHA1_Final_20(v.buffer, &sha1_ctx, v.buffer);
+   j = (slen - 1) / 4;
+   essid.u32[j] = htonl((unsigned int)'\2');
+   HMAC_SHA1_6420Ex(&ctx_ipad, &ctx_opad, essid.u8, slen, pmk + 20);
 
-		SHA1_Assign_6420(&sha1_ctx, &ctx_opad);
-		SHA1_Final_20(v.buffer, &sha1_ctx, v.buffer);
+   memcpy(buffer.u8, pmk + 20, 20);
 
-		for (j = 0; j < 5; ++j)
-			((unsigned int*)pmk)[j] ^= v.buffer4u[j];
-	}
-	
-	for (i = 0; i < 5; ++i)
-		((unsigned int*)pmk)[i] = htonl(((unsigned int*)pmk)[i]);
+   for (i = 1; i < 4096; ++i)
+   {
+      SHA1_Final_20(buffer.u8, &ctx_ipad, buffer.u8);
+      SHA1_Final_20(buffer.u8, &ctx_opad, buffer.u8);
 
-	essid[slen - 1] = '\2';
-	HMAC(EVP_sha1(), (unsigned char *)key, klen, (unsigned char*)essid, slen, pmk + 20, NULL);
-	
-	//reverse the data words here to avoid to do this each time in SHA1
-	for (i = 0; i < 5; ++i)
-		v.buffer4u[i] = ((unsigned int*)(pmk + 20))[i] = htonl(((unsigned int*)(pmk + 20))[i]);
+      for (j = 0; j < 5; ++j)
+         ((unsigned int*)(pmk + 20))[j] ^= buffer.u32[j];
+   }
 
-	for (i = 1; i < 4096; i++)
-	{
-		SHA1_Assign_6420(&sha1_ctx, &ctx_ipad);
-		SHA1_Final_20(v.buffer, &sha1_ctx, v.buffer);
-
-		SHA1_Assign_6420(&sha1_ctx, &ctx_opad);
-		SHA1_Final_20(v.buffer, &sha1_ctx, v.buffer);
-
-		for (j = 0; j < 5; ++j)
-			((unsigned int*)(pmk + 20))[j] ^= v.buffer4u[j];
-	}
-	
-	for (i = 0; i < 5; ++i)
-		((unsigned int*)(pmk + 20))[i] = htonl(((unsigned int*)(pmk + 20))[i]);
+   // reverse back before usage
+   for (i = 0; i < 10; ++i)
+   {
+      ((unsigned int*)pmk)[i] = htonl(((unsigned int*)pmk)[i]);
+   }
 }
 
 // void calc_ptk (struct WPA_hdsk *wpa, unsigned char bssid[6], unsigned char pmk[32], unsigned char ptk[80]) {

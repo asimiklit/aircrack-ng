@@ -257,7 +257,8 @@ void SHA1_Init_64(SHA_CTX6420 *ctx, const void * data64byte)
    blk_SHA1_Block(ctx, data64byte);
 }
 
-void SHA1_Final_20(unsigned char ohash[20], SHA_CTX6420 *ctx, const void * data20byte)
+
+void SHA1_Final_20(unsigned char ohash[20], const SHA_CTX6420 *ctx, const void * data20byte)
 {
    typedef unsigned long long int uint64_type;
    typedef unsigned int uint32_type;
@@ -273,28 +274,107 @@ void SHA1_Final_20(unsigned char ohash[20], SHA_CTX6420 *ctx, const void * data2
    v.buffer32u[2] = ((uint32_type*)data20byte)[2];
    v.buffer32u[3] = ((uint32_type*)data20byte)[3];
    v.buffer32u[4] = ((uint32_type*)data20byte)[4];
-   v.buffer32u[5] = 0x80000000u;
+   v.buffer32u[5] = 0x80000000U;
    for (i = 6; i < 15; ++i)
    {
       v.buffer32u[i] = 0x0U;
    }
    v.buffer32u[15] = 0x000002A0u;
-   blk_SHA1_Block(ctx, v.buffer32u);
 
-   /* Output hash */
-   put_be32(ohash + 0 * 4, ctx->h0);
-   put_be32(ohash + 1 * 4, ctx->h1);
-   put_be32(ohash + 2 * 4, ctx->h2);
-   put_be32(ohash + 3 * 4, ctx->h3);
-   put_be32(ohash + 4 * 4, ctx->h4);
+   for (i = 0; i < 5; ++i)
+      ((unsigned int*)ohash)[i] = ((unsigned int*)ctx)[i];
+
+   blk_SHA1_Block((SHA_CTX6420*)ohash, v.buffer32u);
 }
-void SHA1_Assign_6420(SHA_CTX6420 *left, SHA_CTX6420 *right)
+
+void SHA1_Final_l56(unsigned char ohash[20], const SHA_CTX6420 *ctx, const void * data, size_t datasize)
+{
+   typedef unsigned long long int uint64_type;
+   typedef unsigned int uint32_type;
+   typedef unsigned char uint8_type;
+   unsigned int i, datawords = (unsigned int)(datasize >> 2U);
+   uint32_type left = (uint32_type)(datasize & 0x3);
+   uint32_type padlen1 = (uint32_type)((datasize + 64U) << 3);
+   union
+   {
+      uint8_type buffer8u[64];
+      uint32_type buffer32u[16];
+      uint64_type buffer64u[8];
+   } v;
+   for (i = 0; i < datawords; ++i)
+   {
+      v.buffer32u[i] = ((uint32_type*)data)[i];
+   }
+   if (left)
+   {
+      v.buffer32u[i] = (0x80U << ((3U - left) << 3U)) | ((uint32_type*)data)[i];
+   }
+   else
+   {
+      v.buffer32u[i] = (0x80U << ((3U - left) << 3U));
+   }
+   while(i < 14)
+   {
+      v.buffer32u[++i] = 0x0U;
+   }
+   v.buffer32u[15] = padlen1;
+
+   for (i = 0; i < 5; ++i)
+      ((unsigned int*)ohash)[i] = ((unsigned int*)ctx)[i];
+   
+   blk_SHA1_Block((SHA_CTX6420*)ohash, v.buffer32u);
+}
+
+void SHA1_Assign_6420(SHA_CTX6420 *left, const SHA_CTX6420 *right)
 {
    left->h0 = right->h0;
    left->h1 = right->h1;
    left->h2 = right->h2;
    left->h3 = right->h3;
    left->h4 = right->h4;
+}
+
+void HMAC_SHA1_6420(const char* key, size_t keysize, const char* data, size_t datasize, unsigned char outkey[20])
+{
+   SHA_CTX6420 ipad, opad;
+   HMAC_SHA1_6420v2(key, keysize, data, datasize, outkey, &ipad, &opad);
+}
+void HMAC_SHA1_6420v2(const char* key, size_t keysize, const char* data, size_t datasize, unsigned char outkey[], SHA_CTX6420 * outkey_ipad, SHA_CTX6420 * outkey_opad)
+{
+   //from http://csrc.nist.gov/publications/fips/fips198-1/FIPS-198-1_final.pdf
+   typedef unsigned long long int uint64_type;
+   typedef unsigned int uint32_type;
+   enum { kBLOCKSIZE = 64 };
+
+   int i, kwords = ((uint32_type)keysize) >> 2;
+   uint32_type left = (uint32_type)(((uint32_type)keysize) & ((uint32_type)0x3));
+   union
+   {
+      unsigned char buffer8u[64];
+      uint32_type buffer32u[16];
+      uint64_type buffer64u[8];
+   } v;
+
+   for (i = 0; i < 16; ++i)
+      v.buffer32u[i] = 0x36363636U;
+
+   for (i = 0; i < kwords; ++i)
+      v.buffer32u[i] ^= ((unsigned int*)key)[i];
+
+   if (left){ v.buffer32u[i] ^= ((unsigned int*)key)[i]; }
+
+   SHA1_Init_64(outkey_ipad, v.buffer8u);
+
+   for (i = 0; i < 16; ++i)
+      v.buffer32u[i] ^= 0x6A6A6A6AU;
+
+   SHA1_Init_64(outkey_opad, v.buffer8u);
+   HMAC_SHA1_6420Ex(outkey_ipad, outkey_opad, data, datasize, outkey);
+}
+void HMAC_SHA1_6420Ex(const SHA_CTX6420 * key_ipad, const SHA_CTX6420 * key_opad, const char* data, size_t datasize, unsigned char outkey[20])
+{
+   SHA1_Final_l56(outkey, key_ipad, data, datasize);
+   SHA1_Final_20(outkey, key_opad, outkey);
 }
 #define _SHA1_64_20_GIT
 #endif

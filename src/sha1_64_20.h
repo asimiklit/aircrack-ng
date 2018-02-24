@@ -36,7 +36,18 @@ typedef struct {
 } SHA_CTX6420;
 
 void SHA1_Init_64(SHA_CTX6420 *ctx, const void * data64byte);
-void SHA1_Final_20(unsigned char ohash[20], SHA_CTX6420 *ctx, const void * data20byte);
-void SHA1_Assign_6420(SHA_CTX6420 *left, SHA_CTX6420 *right);
+void SHA1_Final_20(unsigned char ohash[20], const SHA_CTX6420 *ctx, const void * data20byte);
+/***
+* @ The 'datasize' must be less than 56. Just 1-55 byte of data is acceptable
+****/
+void SHA1_Final_l56(unsigned char ohash[20], const SHA_CTX6420 *ctx, const void * data, size_t datasize);
+void SHA1_Assign_6420(SHA_CTX6420 *left, const SHA_CTX6420 *right);
+/***
+* @ The 'keysize' must be less than 65. Just 1-64 byte of data is acceptable
+* @ The ipad and opad should not be initialized it just memory for ipad and opad
+****/
+void HMAC_SHA1_6420(const char* key, size_t keysize, const char* data, size_t datasize, unsigned char outkey[20]);
+void HMAC_SHA1_6420v2(const char* key, size_t keysize, const char* data, size_t datasize, unsigned char outkey[20], SHA_CTX6420 * outkey_ipad, SHA_CTX6420 * outkey_opad);
+void HMAC_SHA1_6420Ex(const SHA_CTX6420 * key_ipad, const SHA_CTX6420 * key_opad, const char* data, size_t datasize, unsigned char outkey[20]);
 
 #define SHA_DIGEST_LENGTH 20
